@@ -121,16 +121,37 @@ export class AlterarCertificadoraComponent implements OnInit {
   }
 
   editarConta(conta: IConta): void {
-    // Ativa o modo de edição e armazena a conta a ser editada
     this.editandoConta = true;
     this.atualizacoesAcumuladas.contaEditada = conta;
-    // Preenche o formulário com os dados existentes da conta
     this.editaContaForm.patchValue({
       conta: conta.conta,
       titular: conta.titular,
       usuario: conta.usuario
     });
+    
+    // Armazena o valor antigo da conta
+    let oldContaNumber = conta.conta;
+    
+    // Subscrição para monitorar as mudanças no campo "conta"
+    const sub = this.editaContaForm.get('conta')?.valueChanges.subscribe(newContaNumber => {
+      // Percorre o array de subcontas
+      this.subContas = this.subContas.map(subConta => {
+        if (subConta.contaVinculada === oldContaNumber) {
+          // Atualiza a conta vinculada para o novo valor
+          return { ...subConta, contaVinculada: newContaNumber };
+        }
+        return subConta;
+      });
+      // Atualiza a variável oldContaNumber para o próximo ciclo de alterações
+      oldContaNumber = newContaNumber;
+    });
+  
+    // É importante que você guarde essa subscrição (por exemplo, em uma propriedade)
+    // para depois dar unsubscribe ao finalizar a edição e evitar vazamentos de memória.
+    // Exemplo:
+    this.contaValueChangesSubscription = sub;
   }
+  
 
   alterarConta(): void {
     // Se o formulário de conta for válido e há uma conta em edição...
