@@ -1,0 +1,26 @@
+<div class="card mb-4">
+    <div class="card-header">
+      Alterar Conta
+    </div>
+    <div class="card-body">
+      <form [formGroup]="editaContaForm">
+        <div class="mb-3">
+          <label class="form-label">Conta</label>
+          <input formControlName="conta" placeholder="Informe a conta" class="form-control" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Titular</label>
+          <input formControlName="titular" placeholder="Informe o titular" class="form-control" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Usuário</label>
+          <input formControlName="usuario" placeholder="Informe o usuário" class="form-control" />
+        </div>
+      </form>
+      <div class="text-end">
+        <button class="btn btn-secondary me-2" (click)="cancelar.emit()">Cancelar</button>
+        <button class="btn btn-primary" (click)="alterar.emit()">Confirmar</button>
+      </div>
+    </div>
+  </div>
+  

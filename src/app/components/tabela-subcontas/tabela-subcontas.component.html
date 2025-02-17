@@ -1,0 +1,49 @@
+<div class="card mt-4">
+    <div class="card-header">
+      Sub-contas
+    </div>
+    <div class="card-body">
+      <table class="table table-bordered">
+        <thead>
+          <tr>
+            <th>Conta Vinculada</th>
+            <th>Sub-conta</th>
+            <th>Titular</th>
+            <th>Usuário</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let sub of subContas">
+            <td>{{ sub.contaVinculada }}</td>
+            <td>{{ sub.subConta }}</td>
+            <td>{{ sub.titular }}</td>
+            <td>{{ sub.usuario }}</td>
+            <td>
+              <button class="btn btn-sm btn-warning me-1" (click)="editarSubConta.emit(sub)">Edit</button>
+              <button class="btn btn-sm btn-danger" (click)="excluirSubConta.emit(sub)">Delete</button>
+            </td>
+          </tr>
+
+        <tr *ngIf="adicionandoSubConta" [formGroup]="criaSubContaForm">
+          <td>
+            <input type="text" formControlName="contaVinculada" class="form-control" placeholder="Conta Vinculada">
+          </td>
+          <td>
+            <input type="text" formControlName="subConta" class="form-control" placeholder="Sub-conta">
+          </td>
+          <td>
+            <input type="text" formControlName="titular" class="form-control" placeholder="Titular">
+          </td>
+          <td>
+            <input type="text" formControlName="usuario" class="form-control" placeholder="Usuário">
+          </td>
+          <td>
+            <button class="btn btn-sm btn-primary me-1" (click)="salvarNovaSubConta.emit()">Salvar</button>
+            <button class="btn btn-sm btn-secondary" (click)="cancelarNovaSubConta.emit()">Cancelar</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>

@@ -1,0 +1,69 @@
+<div class="container mb-4">
+    <!-- Informações da certificadora (pode permanecer aqui no pai ou em um componente específico) -->
+    <div class="card mb-4">
+      <div class="card-header">
+        Informações da Certificadora
+      </div>
+      <div class="card-body">
+        <div class="row mb-3">
+          <div class="col-md-4">
+            <strong>Certificadora:</strong> {{ certificadora.nomeCertificadora }}
+          </div>
+          <div class="col-md-4" [formGroup]="formCertificadora">
+            <strong>Situação:</strong>
+            <select formControlName="situacao" class="form-select">
+              <option value="Ativo">Ativo</option>
+              <option value="Inativo">Inativo</option>
+            </select>
+          </div>
+        </div>
+      </div>
+    </div>
+  
+    <!-- Tabela de Contas -->
+    <div class="mb-4">
+    <app-tabela-contas
+      [contas]="contas"
+      [criaContaForm]="criaContaForm"
+      [adicionandoConta]="adicionandoConta"
+      (editarConta)="editarConta($event)"
+      (excluirConta)="confirmarExclusaoConta($event)"
+      (adicionarConta)="adicionarConta()"
+      (adicionarSubConta)="adicionarSubConta($event)"
+      (salvarNovaConta)="salvarNovaConta()"
+      (cancelarNovaConta)="cancelarNovaConta()"
+    ></app-tabela-contas>
+    </div>
+
+    <!-- Card de Edição de Conta (exibe quando editando uma conta) --> 
+    <!-- Tabela de Sub-contas -->
+    <div class="mb-4">
+    <app-tabela-subcontas
+      [subContas]="subContas"
+      [criaSubContaForm]="criaSubContaForm"
+      [adicionandoSubConta]="adicionandoSubConta"
+      (editarSubConta)="editarSubConta($event)"
+      (excluirSubConta)="confirmarExclusaoSubConta($event)"
+      (salvarNovaSubConta)="salvarNovaSubConta()"
+      (cancelarNovaSubConta)="cancelarNovaSubConta()"
+    ></app-tabela-subcontas>
+    </div> 
+  
+  
+    <!-- Card de Edição de Sub-conta (exibe quando editando uma sub-conta) -->
+    <div>
+    <app-card-alterar-subcontas
+      *ngIf="editandoSubConta"
+      [editaSubContaForm]="editaSubContaForm"
+      (alterar)="confirmarEdicaoSubConta()"
+      (cancelar)="cancelarEdicaoSubConta()"
+    ></app-card-alterar-subcontas>
+    </div>
+  
+    <!-- Botões de Confirmação ou Cancelamento gerais -->
+    <div class="text-end mt-3" *ngIf="!editandoSubConta && !editandoConta">
+      <button class="btn btn-secondary me-2" (click)="cancelar()">Cancelar</button>
+      <button class="btn btn-primary" (click)="confirmarAtualizacao()">Confirmar</button>
+    </div>
+  </div>
+  

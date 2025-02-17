@@ -1,0 +1,30 @@
+<div class="card mb-4">
+    <div class="card-header">
+      Alterar Sub-conta
+    </div>
+    <div class="card-body">
+      <form [formGroup]="editaSubContaForm">
+        <div class="mb-3">
+          <label class="form-label">Conta Vinculada</label>
+          <input formControlName="contaVinculada" placeholder="Conta vinculada" class="form-control" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Sub-conta</label>
+          <input formControlName="subConta" placeholder="Sub-conta" class="form-control" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Titular</label>
+          <input formControlName="titular" placeholder="Titular" class="form-control" />
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Usuário</label>
+          <input formControlName="usuario" placeholder="Usuário" class="form-control" />
+        </div>
+      </form>
+    </div>
+    <div class="card-footer text-end">
+      <button class="btn btn-secondary me-2" (click)="cancelar.emit()">Cancelar</button>
+      <button class="btn btn-primary" (click)="alterar.emit()">Confirmar</button>
+    </div>
+  </div>
+  

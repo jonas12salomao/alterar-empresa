@@ -1,0 +1,55 @@
+<div class="card mb-4">
+    <div class="card-header">
+      Conta
+    </div>
+    <div class="card-body">
+      <table class="table table-striped">
+        <thead>
+          <tr>
+            <th>Certificadora</th>
+            <th>Conta</th>
+            <th>Titular</th>
+            <th>Usuário</th>
+            <th>Ações</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let conta of contas">
+            <td>{{ conta.certificadora }}</td>
+            <td>{{ conta.conta }}</td>
+            <td>{{ conta.titular }}</td>
+            <td>{{ conta.usuario }}</td>
+            <td>
+              <button class="btn btn-sm btn-primary me-1" (click)="adicionarSubConta.emit(conta)">Append</button>
+              <button class="btn btn-sm btn-warning me-1" (click)="editarConta.emit(conta)">Edit</button>
+              <button class="btn btn-sm btn-danger" (click)="excluirConta.emit(conta)">Delete</button>
+            </td>
+          </tr>
+
+          <tr *ngIf="adicionandoConta" [formGroup]="criaContaForm">
+            <td>
+              <input type="text" formControlName="certificadora" class="form-control" placeholder="Certificadora">
+            </td>
+            <td>
+            <td>
+              <input type="text" formControlName="conta" class="form-control" placeholder="Conta">
+            </td>
+            <td>
+              <input type="text" formControlName="titular" class="form-control" placeholder="Titular">
+            </td>
+            <td>
+              <input type="text" formControlName="usuario" class="form-control" placeholder="Usuário">
+            </td>
+            <td>
+              <button class="btn btn-sm btn-primary me-1" (click)="salvarNovaConta.emit()">Salvar</button>
+              <button class="btn btn-sm btn-secondary" (click)="cancelarNovaConta.emit()">Cancelar</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="text-end">
+        <button class="btn btn-sm btn-success" (click)="adicionarConta.emit()">Adicionar Conta</button>
+      </div>
+    </div>
+  </div>
+  

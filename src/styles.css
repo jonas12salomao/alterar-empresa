@@ -1,0 +1,38 @@
+/* You can add global styles to this file, and also import other style files */
+/* styles.scss ou nos arquivos .scss dos componentes */
+.container {
+    max-width: 1200px;
+    margin: auto;
+  }
+  
+  .card {
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  }
+  
+  .card-header {
+    background-color: #f8f9fa;
+    padding: 0.75rem 1.25rem;
+    font-size: 1.25rem;
+    border-bottom: 1px solid #ddd;
+  }
+  
+  .card-body {
+    padding: 1.25rem;
+  }
+  
+  .card-footer {
+    padding: 0.75rem 1.25rem;
+    background-color: #f8f9fa;
+    border-top: 1px solid #ddd;
+  }
+  
+  .table {
+    margin-bottom: 0;
+  }
+  
+  .btn {
+    min-width: 80px;
+  }
+  
