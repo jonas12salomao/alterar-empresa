@@ -35,6 +35,15 @@
     ></app-tabela-contas>
     </div>
 
+    <div>
+      <app-card-alterar-contas
+        *ngIf="editandoConta"
+        [editaContaForm]="editaContaForm"
+        (alterar)="alterarConta()"
+        (cancelar)="cancelarEdicaoConta()"
+      ></app-card-alterar-contas>
+      </div>
+
     <!-- Card de Edição de Conta (exibe quando editando uma conta) --> 
     <!-- Tabela de Sub-contas -->
     <div class="mb-4">
