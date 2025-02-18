@@ -81,7 +81,7 @@ export class AlterarCertificadoraComponent implements OnInit {
 
   // MÉTODOS PARA CONTAS
 
-  salvarNovaConta(): void {
+  salvarNovaConta() {
     if (this.criaContaForm.valid) {
       // Cria um objeto do tipo ISubConta com os dados do formulário
       const novaConta: IConta = {
@@ -103,24 +103,23 @@ export class AlterarCertificadoraComponent implements OnInit {
   }
 
   // Método para cancelar a adição da nova sub-conta
-  cancelarNovaConta(): void {
+  cancelarNovaConta() {
     this.adicionandoConta = false;
     this.criaContaForm.reset();
   }
 
-  adicionarConta(): void {
+  adicionarConta() {
     // Cria uma nova conta com um número gerado a partir do tamanho atual do array
     this.adicionandoConta = true;
     this.criaContaForm.setValue({
       certificadora: this.certificadora.nomeCertificadora,
       conta: '',
       titular: '',
-      usuario: '',
-      numero: (this.contas.length + 1).toString()
+      usuario: ''
     });
   }
 
-  editarConta(conta: IConta): void {
+  editarConta(conta: IConta) {
     // Ativa o modo de edição e armazena a conta a ser editada
     this.editandoConta = true;
     this.atualizacoesAcumuladas.contaEditada = conta;
@@ -136,24 +135,32 @@ export class AlterarCertificadoraComponent implements OnInit {
 
   alterarConta() {
     if (this.editaContaForm.valid && this.atualizacoesAcumuladas.contaEditada) {
-      // Armazena o número antigo antes de atualizar
+      // Armazena o número antigo e o novo número da conta
       const oldContaNumber = this.atualizacoesAcumuladas.contaEditada.conta;
       const newContaNumber = this.editaContaForm.value.conta;
-      
-      // Cria o objeto atualizado, mesclando os valores antigos e os novos
+  
+      // Cria o objeto atualizado para a conta
       const contaAtualizada: IConta = {
         ...this.atualizacoesAcumuladas.contaEditada,
         ...this.editaContaForm.value
       };
-      
-      // Atualiza a conta via service
+  
+      // Atualiza a conta via serviço
       this.alterarCertificadoraService.atualizarConta(contaAtualizada).subscribe(response => {
         if (response.success) {
-          // Atualiza as subcontas: onde o campo "contaVinculada" for igual ao antigo, substitua pelo novo
-          this.subContas = this.subContas.map(sub =>
-            sub.contaVinculada === oldContaNumber ? { ...sub, contaVinculada: newContaNumber } : sub
+          // Para cada subconta cujo campo contaVinculada seja igual ao antigo número,
+          // atualiza-o para o novo número chamando o serviço para atualizar cada subconta.
+          const subContasParaAtualizar = this.subContas.filter(
+            sub => sub.contaVinculada === oldContaNumber
           );
-          // Finaliza o modo de edição
+  
+          subContasParaAtualizar.forEach(sub => {
+            const subAtualizada: ISubConta = {
+              ...sub,
+              contaVinculada: newContaNumber
+            };
+            this.alterarCertificadoraService.atualizarSubConta(subAtualizada).subscribe();
+          });
           this.editandoConta = false;
         }
       });
@@ -167,7 +174,7 @@ export class AlterarCertificadoraComponent implements OnInit {
     if (confirm('Deseja excluir esta conta? Ao excluir, todas as sub-contas vinculadas serão removidas.')) {
       this.alterarCertificadoraService.excluirConta(conta).subscribe(response => {
         if (response.success) {
-          // A atualização é propagada via BehaviorSubject
+          alert('Conta excluida com sucesso.');
         }
       });
     }
@@ -207,9 +214,6 @@ export class AlterarCertificadoraComponent implements OnInit {
     this.criaSubContaForm.patchValue({
       contaVinculada: conta ? conta.conta : ''
     });
-    console.log('Valor após patch:', this.criaSubContaForm.get('contaVinculada')?.value);
-    this.cdr.detectChanges();
-    console.log('2..Valor após patch:', this.criaSubContaForm.get('contaVinculada')?.value);
   }
 
   editarSubConta(sub: ISubConta): void {
@@ -250,7 +254,7 @@ export class AlterarCertificadoraComponent implements OnInit {
     if (confirm('Deseja excluir esta sub-conta?')) {
       this.alterarCertificadoraService.excluirSubConta(sub).subscribe(response => {
         if (response.success) {
-          // A atualização é propagada automaticamente
+          alert('Sub-conta excluida com sucesso.');
         }
       });
     }
