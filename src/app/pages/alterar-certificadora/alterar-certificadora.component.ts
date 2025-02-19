@@ -1,7 +1,7 @@
 import { ChangeDetectorRef, Component, OnInit } from '@angular/core';
 import { FormGroup, FormControl, Validators } from '@angular/forms';
 import { AlterarCertificadoraService } from 'src/app/services/alterar-certificadora.service';
-import { ICertificadora, IConta, ISubConta } from 'src/app/shared/tipos-e-mocks';
+import { IAtualizacoesAcumuladas, ICertificadora, IConta, ISubConta } from 'src/app/shared/tipos-e-mocks';
 
 @Component({
   selector: 'app-alterar-certificadora',
@@ -136,8 +136,8 @@ export class AlterarCertificadoraComponent implements OnInit {
   alterarConta() {
     if (this.editaContaForm.valid && this.atualizacoesAcumuladas.contaEditada) {
       // Armazena o número antigo e o novo número da conta
-      const oldContaNumber = this.atualizacoesAcumuladas.contaEditada.conta;
-      const newContaNumber = this.editaContaForm.value.conta;
+      const numeroContaAntiga = this.atualizacoesAcumuladas.contaEditada.conta;
+      const numeroContaNova = this.editaContaForm.value.conta;
   
       // Cria o objeto atualizado para a conta
       const contaAtualizada: IConta = {
@@ -151,13 +151,13 @@ export class AlterarCertificadoraComponent implements OnInit {
           // Para cada subconta cujo campo contaVinculada seja igual ao antigo número,
           // atualiza-o para o novo número chamando o serviço para atualizar cada subconta.
           const subContasParaAtualizar = this.subContas.filter(
-            sub => sub.contaVinculada === oldContaNumber
+            sub => sub.contaVinculada === numeroContaAntiga
           );
   
           subContasParaAtualizar.forEach(sub => {
             const subAtualizada: ISubConta = {
               ...sub,
-              contaVinculada: newContaNumber
+              contaVinculada: numeroContaNova
             };
             this.alterarCertificadoraService.atualizarSubConta(subAtualizada).subscribe();
           });
@@ -275,6 +275,41 @@ export class AlterarCertificadoraComponent implements OnInit {
   cancelar(): void {
     alert('Operação cancelada.');
     // Aqui você pode, por exemplo, redirecionar para outra página usando o Router
+  }
+
+  limparAtualizacoes(atualizacoes: IAtualizacoesAcumuladas): IAtualizacoesAcumuladas {
+    // 1. Remover contas que foram adicionadas e depois excluídas – elas não precisam ser enviadas.
+    atualizacoes.contasAdicionadas = atualizacoes.contasAdicionadas.filter(c => 
+      !atualizacoes.contasExcluidas.find(ec => ec.numero === c.numero)
+    );
+  
+    // 2. Se uma conta foi adicionada e também editada, mantenha apenas a versão final na lista de adições.
+    atualizacoes.contasEditadas = atualizacoes.contasEditadas.filter(c =>
+      !atualizacoes.contasAdicionadas.find(ac => ac.numero === c.numero)
+    );
+  
+    // 3. Se uma conta foi editada e depois excluída, remova-a da lista de edições.
+    atualizacoes.contasEditadas = atualizacoes.contasEditadas.filter(c =>
+      !atualizacoes.contasExcluidas.find(ec => ec.numero === c.numero)
+    );
+  
+    // 4. Para subcontas, se uma subconta foi adicionada e depois excluída, remova-a da lista de adições.
+    atualizacoes.subContasAdicionadas = atualizacoes.subContasAdicionadas.filter(s => 
+      !atualizacoes.subContasExcluidas.find(es => es.subConta === s.subConta)
+    );
+  
+    // 5. Se uma subconta foi adicionada, não deve aparecer na lista de edições.
+    atualizacoes.subContasEditadas = atualizacoes.subContasEditadas.filter(s =>
+      !atualizacoes.subContasAdicionadas.find(ns => ns.subConta === s.subConta)
+    );
+  
+    // 6. Se uma subconta foi editada e depois excluída, remova-a da lista de edições.
+    atualizacoes.subContasEditadas = atualizacoes.subContasEditadas.filter(s =>
+      !atualizacoes.subContasExcluidas.find(es => es.subConta === s.subConta)
+    );
+  
+    // Outras regras podem ser aplicadas conforme a necessidade do seu fluxo.
+    return atualizacoes;
   }
 
   confirmarAtualizacao(): void {

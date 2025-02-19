@@ -36,6 +36,12 @@ export interface ICertificadora {
   
   // Interface opcional para acumular atualizações (como edição) de conta e sub-conta.
   export interface IAtualizacoesAcumuladas {
+    contasAdicionadas: any;
+    contasExcluidas: any;
+    contasEditadas: any;
+    subContasAdicionadas: any;
+    subContasExcluidas: any;
+    subContasEditadas: any;
     // A conta que está sendo editada (opcional)
     contaEditada?: IConta;
     // A sub-conta que está sendo editada (opcional)
