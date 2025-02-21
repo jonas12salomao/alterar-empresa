@@ -30,59 +30,94 @@ A seguir, segue uma versão final dos principais arquivos (service, componente p
 O service volta à forma “original”, com métodos CRUD individuais para contas e subcontas.
 
 // src/app/services/alterar-certificadora.service.ts
+
+// src/app/services/alterar-certificadora.service.ts
+
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { map } from 'rxjs/operators';
 import { ICertificadora, IConta, ISubConta } from 'src/app/shared/models/interfaces/tipos-e-mocks';
 
 @Injectable({
   providedIn: 'root'
 })
 export class AlterarCertificadoraService {
-  // URL base do json‑server
+  // URL base do json-server (ajuste conforme necessário)
   private baseUrl = 'http://localhost:3000';
 
   constructor(private http: HttpClient) { }
 
-  // Operações para a certificadora
-  getCertificadora(): Observable<ICertificadora> {
-    return this.http.get<ICertificadora>(`${this.baseUrl}/certificadora`);
+  // Retorna a certificadora e "embrulha" a resposta com success: true
+  getCertificadora(): Observable<{ success: boolean, data: ICertificadora }> {
+    return this.http.get<ICertificadora>(`${this.baseUrl}/certificadora`)
+      .pipe(
+        map(res => ({ success: true, data: res }))
+      );
   }
 
-  // Operações para contas
-  getContas(): Observable<IConta[]> {
-    return this.http.get<IConta[]>(`${this.baseUrl}/contas`);
+  // Retorna o array de contas
+  getContas(): Observable<{ success: boolean, data: IConta[] }> {
+    return this.http.get<IConta[]>(`${this.baseUrl}/contas`)
+      .pipe(
+        map(res => ({ success: true, data: res }))
+      );
   }
 
-  adicionarConta(novaConta: IConta): Observable<IConta> {
-    return this.http.post<IConta>(`${this.baseUrl}/contas`, novaConta);
+  // Adiciona uma nova conta e "embrulha" a resposta
+  adicionarConta(novaConta: IConta): Observable<{ success: boolean, data: IConta }> {
+    return this.http.post<IConta>(`${this.baseUrl}/contas`, novaConta)
+      .pipe(
+        map(res => ({ success: true, data: res }))
+      );
   }
 
-  atualizarConta(contaAtualizada: IConta): Observable<IConta> {
-    // Usamos "numero" como identificador único
-    return this.http.put<IConta>(`${this.baseUrl}/contas/${contaAtualizada.numero}`, contaAtualizada);
+  // Atualiza uma conta, usando o campo "numero" como identificador, e retorna a resposta embrulhada
+  atualizarConta(contaAtualizada: IConta): Observable<{ success: boolean, data: IConta }> {
+    return this.http.put<IConta>(`${this.baseUrl}/contas/${contaAtualizada.numero}`, contaAtualizada)
+      .pipe(
+        map(res => ({ success: true, data: res }))
+      );
   }
 
-  excluirConta(contaParaExcluir: IConta): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/contas/${contaParaExcluir.numero}`);
+  // Exclui uma conta e retorna a resposta embrulhada
+  excluirConta(contaParaExcluir: IConta): Observable<{ success: boolean, data: any }> {
+    return this.http.delete(`${this.baseUrl}/contas/${contaParaExcluir.numero}`)
+      .pipe(
+        map(res => ({ success: true, data: res }))
+      );
   }
 
-  // Operações para subcontas
-  getSubContas(): Observable<ISubConta[]> {
-    return this.http.get<ISubConta[]>(`${this.baseUrl}/subContas`);
+  // Retorna o array de subcontas
+  getSubContas(): Observable<{ success: boolean, data: ISubConta[] }> {
+    return this.http.get<ISubConta[]>(`${this.baseUrl}/subContas`)
+      .pipe(
+        map(res => ({ success: true, data: res }))
+      );
   }
 
-  adicionarSubConta(novaSubConta: ISubConta): Observable<ISubConta> {
-    return this.http.post<ISubConta>(`${this.baseUrl}/subContas`, novaSubConta);
+  // Adiciona uma nova subconta
+  adicionarSubConta(novaSubConta: ISubConta): Observable<{ success: boolean, data: ISubConta }> {
+    return this.http.post<ISubConta>(`${this.baseUrl}/subContas`, novaSubConta)
+      .pipe(
+        map(res => ({ success: true, data: res }))
+      );
   }
 
-  atualizarSubConta(subAtualizada: ISubConta): Observable<ISubConta> {
-    // Usamos "subConta" como identificador único
-    return this.http.put<ISubConta>(`${this.baseUrl}/subContas/${subAtualizada.subConta}`, subAtualizada);
+  // Atualiza uma subconta, usando "subConta" como identificador
+  atualizarSubConta(subAtualizada: ISubConta): Observable<{ success: boolean, data: ISubConta }> {
+    return this.http.put<ISubConta>(`${this.baseUrl}/subContas/${subAtualizada.subConta}`, subAtualizada)
+      .pipe(
+        map(res => ({ success: true, data: res }))
+      );
   }
 
-  excluirSubConta(subParaExcluir: ISubConta): Observable<any> {
-    return this.http.delete(`${this.baseUrl}/subContas/${subParaExcluir.subConta}`);
+  // Exclui uma subconta
+  excluirSubConta(subParaExcluir: ISubConta): Observable<{ success: boolean, data: any }> {
+    return this.http.delete(`${this.baseUrl}/subContas/${subParaExcluir.subConta}`)
+      .pipe(
+        map(res => ({ success: true, data: res }))
+      );
   }
 }
 
