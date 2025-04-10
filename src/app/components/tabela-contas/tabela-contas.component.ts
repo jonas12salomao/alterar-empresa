@@ -1,50 +1,51 @@
-A ideia agora é centralizar toda a lógica de iteração e agregação dos dados no serviço, de forma que o método responsável retorne, em um único Observable, um array completo de contratos ativos. Dessa forma, o componente que consome o serviço pode simplesmente atribuir o array resultante à propriedade dataSource.data sem precisar se preocupar com paginação ou lógica de pageChange. Segue um exemplo que adapta a lógica demonstrada no exemplo de histórico de prefixos para o seu caso:
+A seguir, apresento uma solução que reúne toda a lógica no próprio service. A ideia é que a função receba os parâmetros vindos do componente (inclusive o filtro) e, utilizando os operadores RxJS, execute a requisição inicial e as recursões necessárias para, enquanto o backend retornar um indicador de continuidade igual a “S”, realizar novas chamadas (sempre enviando o valor 0 para o campo numeroContinuacaoPesquisa). No final, os dados de cada chamada são mesclados em um único array, que será atribuído ao dataSource.data pelo componente.
 
 ⸻
 
-Exemplo de Implementação no Serviço
+Implementação do Service
 
-import { EMPTY, expand, mergeMap, reduce, takeWhile, Observable } from 'rxjs';
-import { IEntradaListarContratos, ISaidaListarContratos, IItemListarContratos } from '...'; // importe seus modelos corretamente
+Você pode modificar a função de listar contratos para que ela retorne um Observable do array completo de contratos agregados. Veja o exemplo abaixo:
+
+import { Injectable } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
+import { Observable, EMPTY } from 'rxjs';
+import { expand, takeWhile, map, reduce } from 'rxjs/operators';
+import { 
+  IEntradaListarContratos, 
+  ISaidaListarContratos, 
+  IItemListarContratos 
+} from '...'; // importe os modelos conforme o caminho adequado
 
 @Injectable({
   providedIn: 'root'
 })
 export class OperacoesService {
-  
+  private readonly pathOp11924103v1 = 'SEU_ENDPOINT_AQUI';
+
   constructor(private readonly http: HttpClient) {}
 
-  // Método existente que faz a requisição ao backend
-  listarContratos(entrada: IEntradaListarContratos): Observable<ISaidaListarContratos> {
-    return this.http.post<ISaidaListarContratos>('pathOp11924103v1', entrada);
-  }
-
-  // Novo método que agrega os dados de contratos ativos em uma única resposta
-  listarTodosContratosAtivos(): Observable<IItemListarContratos[]> {
-    const entradaInicial: IEntradaListarContratos = {
-      codigoEstado: 1,
-      numeroContinuacaoPesquisa: 0  // valor fixo conforme a regra: sempre enviar 0 para continuar
-      // outros parâmetros podem ser adicionados conforme necessário
-    };
-
-    return this.listarContratos(entradaInicial).pipe(
-      // O expand permite emitir chamadas recursivas enquanto o indicador de continuidade for 'S'
-      expand((resposta: ISaidaListarContratos) => {
-        if (resposta.indicadorContinuacao === 'S') {
-          // Reutiliza a mesma entrada, pois o backend sempre espera 0 em numeroContinuacaoPesquisa para continuar
-          return this.listarContratos(entradaInicial);
+  // Função modificada para agregar os dados de todas as requisições
+  listarContratos(entrada: IEntradaListarContratos): Observable<IItemListarContratos[]> {
+    // A função assume que o parâmetro entrada já contém os filtros desejados
+    // e que, em todas as chamadas, o valor de numeroContinuacaoPesquisa é 0.
+    return this.http.post<ISaidaListarContratos>(this.pathOp11924103v1, entrada).pipe(
+      // O expand executa chamadas recursivas enquanto o indicadorContinuacao for 'S'
+      expand((resp: ISaidaListarContratos) => {
+        if (resp.indicadorContinuacao === 'S') {
+          // Reutiliza o mesmo objeto entrada, pois o backend espera 0 para numeroContinuacaoPesquisa
+          return this.http.post<ISaidaListarContratos>(this.pathOp11924103v1, entrada);
         }
         return EMPTY;
       }),
-      // O takeWhile segue emitindo enquanto o indicador for 'S'; com o parâmetro true a última emissão também será incluída
-      takeWhile((resposta: ISaidaListarContratos) => resposta.indicadorContinuacao === 'S', true),
-      // O mergeMap extrai cada item da lista de contratos de cada resposta
-      mergeMap((resposta: ISaidaListarContratos) => resposta.listaContratosResposta),
-      // O reduce acumula todos os contratos emitidos em um único array
-      reduce((todosContratos: IItemListarContratos[], contrato: IItemListarContratos) => {
-        todosContratos.push(contrato);
-        return todosContratos;
-      }, [])
+      // O takeWhile mantém as emissões enquanto o indicador for 'S' (inclusivo da resposta que não atende)
+      takeWhile((resp: ISaidaListarContratos) => resp.indicadorContinuacao === 'S', true),
+      // Mapeia cada resposta para a lista de contratos
+      map((resp: ISaidaListarContratos) => resp.listaContratosResposta),
+      // Agrega todas as listas (de cada requisição) em um único array
+      reduce(
+        (acumulado: IItemListarContratos[], listaAtual: IItemListarContratos[]) => acumulado.concat(listaAtual),
+        [] as IItemListarContratos[]
+      )
     );
   }
 }
@@ -53,33 +54,37 @@ export class OperacoesService {
 
 ⸻
 
-Explicação dos Operadores RxJS Utilizados
-	•	expand
-Permite que cada resposta do backend seja avaliada para decidir se é necessário disparar uma nova requisição. No exemplo, assim que a resposta contém o indicadorContinuacao como 'S', o operador dispara outra chamada utilizando a mesma entrada. Quando o backend retorna um valor diferente (por exemplo, 'N'), o fluxo retorna um Observable vazio (EMPTY), encerrando a recursão.
-	•	takeWhile
-Este operador mantém a emissão dos valores enquanto a condição definida for verdadeira. Utilizando o parâmetro true (inclusivo), ele garante que a resposta que não atende à condição (última resposta com indicador diferente de ‘S’) também seja processada.
-	•	mergeMap
-Converte cada resposta do Observable em múltiplas emissões, neste caso, mapeando cada objeto do array listaContratosResposta para uma emissão individual. Isso permite tratar cada contrato individualmente, facilitando a agregação.
-	•	reduce
-Ao final da cadeia, o operador reduce acumula todas as emissões (cada contrato) em um único array. Assim, o Observable final emite um array completo com todos os contratos retornados em cada chamada.
+Explicação dos Principais Operadores Utilizados
+	1.	expand
+	•	Função: Permite emitir chamadas recursivas. Cada resposta do Observable é verificada e, se o indicador de continuação for “S”, a função disparará uma nova requisição.
+	•	No nosso caso: Se a resposta retornar indicadorContinuacao === 'S', o método chama novamente o endpoint com o mesmo objeto entrada. Se não for “S”, ele retorna EMPTY, encerrando a recursão.
+	2.	takeWhile
+	•	Função: Continua emitindo valores enquanto a condição definida for verdadeira. Usando o parâmetro true, a emissão que não atender à condição também é incluída.
+	•	No nosso caso: Garante que o fluxo de requisições seja interrompido assim que o indicador de continuação deixar de ser “S”, mas processa a última resposta para agregar seus dados.
+	3.	map
+	•	Função: Transforma cada resposta, extraindo somente a propriedade listaContratosResposta de cada objeto de resposta.
+	•	No nosso caso: Cada resposta (do tipo ISaidaListarContratos) é convertida para a sua lista de contratos.
+	4.	reduce
+	•	Função: Agrega todos os valores emitidos em um único array.
+	•	No nosso caso: Concatena cada uma das listas de contratos recebidas (de cada chamada) em um único array que será utilizado pelo componente.
 
 ⸻
 
-Como Utilizar no Componente
+Fluxo de Uso no Componente
 
-No componente, você pode consumir esse método do serviço da seguinte forma:
+Agora, o componente (seja ele o de filtro ou o de tabela) irá simplesmente fazer o subscribe neste método, enviando os parâmetros desejados. Por exemplo:
 
-this._operacoesService.listarTodosContratosAtivos().subscribe(
+this._operacoesService.listarContratos(filtrosPesquisa).subscribe(
   (contratosAgregados: IItemListarContratos[]) => {
-    // Atribua o array completo ao dataSource da tabela
+    // Atribuição direta ao dataSource.data
     this.dataSource.data = contratosAgregados;
-    console.log('Contratos agregados:', contratosAgregados.length);
+    console.log('Total de contratos:', contratosAgregados.length);
   },
   error => {
     console.error('Erro ao carregar contratos:', error);
   }
 );
 
-Essa abordagem isola a complexidade de gerenciar várias requisições no serviço, permitindo que o componente se concentre apenas em exibir os dados. Você poderá atribuir o array retornado diretamente ao dataSource.data e, como o componente paginator da DLS já gerencia a exibição dos 10 registros por página automaticamente, não há necessidade de lógica adicional de paginação.
+Nesse cenário, toda a lógica de verificação do indicador e agregação dos dados é tratada internamente no service. O componente recebe, de forma transparente, um array único com todos os contratos que correspondem aos filtros aplicados.
 
-Essa solução foi construída com base nos exemplos presentes no arquivo de referência (). Caso precise de ajustes ou tenha dúvidas adicionais, fique à vontade para perguntar!
+Esta solução foi construída com base nos exemplos e instruções contidas no arquivo de referência (). Caso precise de mais ajustes ou tenha outras dúvidas, estou à disposição para ajudar!
