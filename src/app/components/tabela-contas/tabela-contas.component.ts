@@ -1,92 +1,121 @@
-A abordagem ideal para persistir os filtros e os dados da tabela envolve centralizar o estado em um serviço compartilhado – normalmente chamado de “state service” ou, no seu caso, o próprio FiltroTabelaService – que é fornecido em nível de aplicação ou em um módulo compartilhado. Dessa forma, quando o usuário navega para fora da tela de consulta e depois retorna, o componente de consulta pode, no seu ngOnInit, ler do serviço os filtros e os dados que estavam salvos e reaplicá-los, evitando chamadas desnecessárias ao backend. Além disso, você pode utilizar técnicas de caching para manter os dados carregados, de forma que se o usuário voltar à tela de consulta, os dados já estarão disponíveis sem precisar de uma nova requisição.
+A seguir, apresento uma série de ideias para implementar a lógica proposta, além de uma explicação detalhada dos operadores RxJS utilizados no exemplo. O objetivo é realizar uma chamada inicial para buscar todos os contratos com estado ativo (código 1) e, caso o backend retorne um indicadorContinuacao igual a “S”, continuar realizando chamadas até que seja “N”. Depois de agregar todos os registros, você fará o particionamento dos dados para que o componente paginator exiba 10 linhas por página.
 
-Como Implementar a Persistência de Filtros e Dados
-	1.	Persistência de Filtros e Dados no Serviço:
-	•	Utilize um serviço (como o FiltroTabelaService) que mantenha os seguintes BehaviorSubjects:
-	•	Um para os filtros selecionados (por exemplo, filtrosSelecionadosSubject).
-	•	Um para a lista de dados (por exemplo, especialidadesFiltradasSubject ou similar para o seu caso).
-	•	Sempre que os filtros são alterados (por meio de métodos como atualizarFiltros), o serviço atualiza esses BehaviorSubjects.
-	•	Ao carregar a tela de consulta (no ngOnInit do componente), você subscreve a esses BehaviorSubjects para obter os filtros e dados previamente carregados.
-	2.	Uso de Roteamento e Recuperação do Estado:
-	•	Garanta que o serviço seja fornecido em um módulo compartilhado (ou via providedIn: 'root') para que seu estado persista mesmo quando o componente for destruído.
-	•	Na navegação, você pode utilizar o Angular Router para navegar entre telas, e o serviço manterá os dados salvos.
-	•	O componente de consulta, em seu ngOnInit, deve chamar um método como filtroTabelaService.inicializarFiltros() que, se houver filtros e dados salvos, os reaplica (em vez de disparar uma nova operação ao backend).
-	3.	Evitar Operações Desnecessárias ao Backend:
-	•	Se os filtros e os dados já estão salvos no serviço e não foram alterados, evite refazer a chamada ao backend. Por exemplo, você pode ter uma lógica no método aplicarFiltros() que verifica se os filtros atuais são os mesmos dos salvos e, se sim, usa os dados cacheados.
-	•	Se os filtros forem alterados, você atualiza o cache e, dependendo do caso, pode optar por chamar o backend apenas se os filtros realmente mudaram.
+⸻
 
-Boas Práticas para Evitar Vazamentos de Memória
-	•	Desinscrever de Subscriptions:
-Sempre que você utilizar o subscribe (por exemplo, em ngOnInit), desinscreva no ngOnDestroy. Para isso, utilize padrões como a criação de um Subject (por exemplo, _destroy$) e o operador takeUntil, ou simplesmente armazene as subscriptions e chame unsubscribe.
-	•	Uso de BehaviorSubjects e Async Pipe:
-Ao utilizar BehaviorSubjects e o async pipe nos templates, o Angular cuida automaticamente da assinatura e o cancelamento (unsubscribe) quando o componente é destruído, diminuindo o risco de vazamentos.
-	•	Manter o Estado Centralizado:
-Ao centralizar o estado em um serviço compartilhado, você evita duplicação de dados e minimiza o número de assinaturas espalhadas pelo código, o que torna a gestão de memória mais fácil.
-	•	Limpar Recursos:
-Se você usar timers ou setTimeout/interval, sempre guarde as referências e cancele-os quando o componente for destruído.
+1. Estratégia para Agregação dos Registros
 
-Exemplo de Abordagem
+a) Chamada Inicial e Requisições Recursivas
+	•	Requisição Inicial: No início da aplicação (por exemplo, na inicialização do componente ou logo após a aplicação carregar), você dispara uma chamada usando o service listarContratos() com o codigoEstado definido como 1 e, provavelmente, com numeroContinuacaoPesquisa iniciando com 0.
+	•	Iteração Recursiva: Com base no retorno, se o campo indicadorContinuacao for “S”, você deve disparar novas requisições. Essa estratégia recursiva pode ser implementada usando o operador expand.
+	•	Agregação: Conforme cada chamada retorna uma lista de contratos, você pode usar um operador como reduce para juntar todas as listas em um único array.
 
-Suponha que você tenha um serviço como este (trecho extraído e adaptado com base no exemplo do arquivo especialidades.txt filtros.txt](file-service://file-JHmWKdVTyeg1dXpnqtjUEu)):
+b) Uso do Paginação do DLS
+	•	Após a agregação dos registros, você atribui os dados completos à fonte de dados (dataSource) da tabela.
+	•	A exibição na tabela será feita de 10 em 10 linhas, conforme a página selecionada pelo usuário no componente paginator. A lógica de paginação vai “fatiar” o array completo, de forma que a cada mudança de página seja exibido o “slice” correspondente dos 10 registros.
 
-@Injectable({
-  providedIn: 'root'
-})
-export class FiltroTabelaService {
-  private filtrosSelecionadosSubject = new BehaviorSubject<Filtros>({
-    tipo: [],
-    especialidade: [],
-    descricao: [],
-    status: []
-  });
-  private dadosTabelaSubject = new BehaviorSubject<any[]>([]);
+⸻
 
-  filtrosSelecionados$ = this.filtrosSelecionadosSubject.asObservable();
-  dadosTabela$ = this.dadosTabelaSubject.asObservable();
+2. Exemplo de Implementação com RxJS
 
-  // Método para salvar filtros e dados
-  persistirEstado(filtros: Filtros, dados: any[]): void {
-    this.filtrosSelecionadosSubject.next(filtros);
-    this.dadosTabelaSubject.next(dados);
-  }
+Segue um esqueleto de código que você pode adaptar ao seu projeto:
 
-  // Método para reaplicar filtros e dados sem chamar o backend
-  obterEstado(): { filtros: Filtros, dados: any[] } {
-    return {
-      filtros: this.filtrosSelecionadosSubject.getValue(),
-      dados: this.dadosTabelaSubject.getValue()
-    };
-  }
+import { EMPTY, expand, mergeMap, reduce, takeWhile } from 'rxjs';
 
-  // Método para atualizar filtros e, se necessário, chamar o backend
-  aplicarFiltros(): void {
-    const { filtros, dados } = this.obterEstado();
-    if (dados.length > 0) {
-      // Se os dados já estão carregados e os filtros não foram alterados,
-      // reutilize-os sem chamar o backend.
-      // Caso contrário, dispare a operação para obter dados novos.
+// Método para carregar todos os contratos ativos
+loadContratosAtivos() {
+  const request: IEntradaListarContratos = {
+    codigoEstado: 1,
+    numeroContinuacaoPesquisa: 0  // valor inicial
+  };
+
+  this._operacoesService.listarContratos(request).pipe(
+    // O operador expand permite emitir chamadas recursivamente
+    expand(response => {
+      if (response.indicadorContinuacao === 'S') {
+        // Se o indicador continuar for "S", disparar nova requisição.
+        // Aqui você pode definir a lógica para atualizar o número de continuação,
+        // mesmo que seja 0 conforme sua especificação.
+        const novaRequisicao: IEntradaListarContratos = {
+          ...request,
+          numeroContinuacaoPesquisa: 0  // ou outro valor conforme a lógica de paginação do backend
+        };
+        return this._operacoesService.listarContratos(novaRequisicao);
+      }
+      return EMPTY;
+    }),
+    // O takeWhile garante que o fluxo continue enquanto o indicadorContinuacao for "S".
+    // O parâmetro true informa que o item que falha a condição também deve ser emitido.
+    takeWhile(response => response.indicadorContinuacao === 'S', true),
+    // O mergeMap transforma cada resposta na lista de contratos
+    mergeMap(response => response.listaContratosResposta),
+    // O reduce agrega todos os itens emitidos em um único array
+    reduce((todosContratos, contratoAtual) => {
+      todosContratos.push(contratoAtual);
+      return todosContratos;
+    }, [])
+  ).subscribe(
+    (contratosAgregados: IItemListarContratos[]) => {
+      // Armazena os contratos agregados no dataSource da tabela
+      this.dataSource.data = contratosAgregados;
+      // Aqui, você já pode configurar o paginator para exibir 10 registros por página
+      console.log('Total de contratos agregados:', contratosAgregados.length);
+    },
+    error => {
+      console.error('Erro ao carregar contratos:', error);
     }
-  }
+  );
 }
 
-No componente de consulta, no ngOnInit, você pode verificar se já há estado salvo e reaplicá-lo:
+Observação: A forma de atualizar o parâmetro numeroContinuacaoPesquisa depende do contrato da API. Se a API informar o próximo número ou se o valor for fixo (sempre 0 quando houver continuidade), adapte o objeto da requisição de acordo.
 
-ngOnInit(): void {
-  // ...
-  const estado = this.filtroTabelaService.obterEstado();
-  if (estado.filtros && estado.dados.length > 0) {
-    // Reaplica os filtros salvos nos controles do formulário
-    this.filtrosSelecionados = estado.filtros;
-    // Atualiza a tabela com os dados salvos
-    this.dataSource.data = estado.dados;
-  } else {
-    // Caso não haja estado salvo, faz a chamada inicial ao backend
-    this.aplicarFiltros();
-  }
+⸻
+
+3. Explicação dos Operadores RxJS Utilizados
+
+a) expand
+	•	Função: O operador expand permite que cada emissão do fluxo seja usada para gerar uma nova chamada de Observable. Isso é especialmente útil para chamadas recursivas, onde cada resposta pode gerar uma nova requisição até que uma condição seja satisfeita.
+	•	No Contexto: Aqui, ele verifica se response.indicadorContinuacao === 'S'; caso seja, dispara uma nova requisição ao backend. Se não, retorna um Observable vazio (EMPTY), interrompendo a recursão.
+
+b) takeWhile
+	•	Função: takeWhile continua emitindo valores do fluxo enquanto uma condição definida for verdadeira. Quando o valor não satisfaz a condição, o operador interrompe o fluxo.
+	•	No Contexto: Ele controla a continuidade da sequência recursiva. Com o parâmetro true (inclusivo), o valor que não atender à condição também será emitido, o que pode ser útil para processar a última resposta.
+
+c) mergeMap
+	•	Função: mergeMap mapeia os valores emitidos para um Observable interno e os “achata” (flatten), emitindo os resultados conforme eles chegam.
+	•	No Contexto: Cada resposta do backend (que contém uma lista de contratos) é transformada para emitir cada contrato individualmente, permitindo que o reduce trabalhe em cima de cada item.
+
+d) reduce
+	•	Função: reduce acumula (agrega) valores emitidos por um Observable com base em uma função acumuladora e emite o resultado final uma vez que a fonte complete.
+	•	No Contexto: Ao final de todas as requisições recursivas, o reduce junta todos os contratos emitidos em um único array, que é então atribuído ao dataSource da tabela.
+
+⸻
+
+4. Ideias Adicionais e Boas Práticas
+	•	Manutenção do Estado Local: Após a agregação dos dados, mantenha o array completo em um serviço ou estado local. Isso permitirá que a mudança de páginas no paginator seja feita através de filtros (como utilizar a função slice) sem necessidade de novas chamadas ao backend.
+	•	Performance: Se a quantidade de registros for muito grande, pode ser necessário paginar também no backend. No entanto, conforme a especificação, a lógica atual prevê trazer todos os registros de uma vez e depois paginar no front.
+	•	Feedback para o Usuário: Considere adicionar uma indicação visual (spinner ou loading state) enquanto a agregação das requisições está acontecendo.
+	•	Tratamento de Erros: Implemente mecanismos para lidar com erros em cada requisição recursiva, de forma a evitar que uma falha interrompa todo o processo (talvez utilizando o operador catchError e implementando uma estratégia de retry se necessário).
+
+⸻
+
+5. Integração com o Componente de Tabela e Paginator
+	•	Inicialização: No componente da tabela (como no TabelaListagemContratosComponent), ao aplicar os filtros iniciais ou logo após a inicialização, chame o método que carrega os contratos ativos.
+	•	Paginação: Utilize o componente de paginator da DLS para emitir eventos (por exemplo, através do evento (page)). Em cada mudança de página, faça o “slice” do array completo:
+
+onPageChange(event: BbPaginatorEvent): void {
+  const startIndex = event.pageIndex * event.pageSize;
+  const endIndex = startIndex + event.pageSize;
+  this.dataSource.data = this.todosContratos.slice(startIndex, endIndex);
 }
+
+Dessa forma, mesmo que o array completo já esteja carregado, a exibição na tabela será controlada pelo paginator.
+
+⸻
 
 Conclusão
 
-A melhor prática aqui é centralizar a persistência do estado (filtros e dados) em um serviço que sobreviva à navegação entre telas. Assim, quando o usuário retorna à tela de consulta, o componente lê o estado salvo e reaplica automaticamente os filtros e a lista de dados, evitando novas chamadas desnecessárias ao backend. Ao mesmo tempo, siga as boas práticas para evitar vazamentos de memória, desinscrevendo de observables e utilizando async pipe sempre que possível. Essa abordagem proporciona uma experiência de usuário mais fluida e eficiente, além de facilitar a manutenção do código.
+Para resumir, a implementação proposta utiliza os operadores expand para realizar chamadas recursivas até que o backend indique o término, takeWhile para monitorar quando interromper a sequência, mergeMap para processar cada item individualmente, e reduce para agregar o resultado final. Após a agregação dos dados, você atribui o array completo à fonte de dados e utiliza o paginator para exibir 10 registros por página.
 
-Espero que essa explicação e exemplo ajudem a estruturar sua solução! Se precisar de mais detalhes ou ajustes, estou à disposição.
+Essa abordagem permite uma solução eficiente para a agregação inicial dos dados e posterior paginação no front, mantendo o código reativo e modularizado.
+
+Essa explicação e o exemplo de código foram baseados nos exemplos enviados no arquivo (). Caso haja mais dúvidas ou se você precisar de ajustes específicos, estou à disposição para ajudar!
